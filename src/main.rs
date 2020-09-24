@@ -34,10 +34,20 @@ static FS_SRC: &'static str = "
 #version 150
 
 in vec4 geom_color;
+in vec2 geom_uv;
 out vec4 out_color;
 
 void main() {
+    // thickness of the edge, in fraction of triangle size
+    float EDGE_THICC = 0.04;
+
     out_color = geom_color;
+    vec2 uv = geom_uv;
+    float edge_dist = min(uv.x, uv.y);
+    float dist_ac = dot(uv.x - vec2(1.0, 1.0), vec2(-sqrt(0.5), -sqrt(0.5)));
+    edge_dist = min(edge_dist, dist_ac);
+    // make a purple dot near the vertex
+    out_color.y -= step(edge_dist, EDGE_THICC);
 }";
 
 // Geometry shader
@@ -52,6 +62,7 @@ in VS_OUT {
 } gs_in[];
 
 out vec4 geom_color;
+out vec2 geom_uv;
 
 vec3 GetNormal()
 {
@@ -61,22 +72,26 @@ vec3 GetNormal()
 }
 
 void main() {
-    float MAX_SLOPE = 0.5;
     vec3 normal = abs(GetNormal());
 
     vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-    color.x = step(normal.y, MAX_SLOPE) * 0.3;
+    // make unwalkable slopes red
+    color.x = step(normal.y, 0.5) * 0.3;
+    // shade steeper slopes darker
     color.xyz += vec3(normal.y);
 
     gl_Position = gl_in[0].gl_Position;
     geom_color = color;
+    geom_uv = vec2(0.0, 0.0);
     EmitVertex();
 
     gl_Position = gl_in[1].gl_Position;
     geom_color = color;
+    geom_uv = vec2(1.0, 0.0);
     EmitVertex();
 
     gl_Position = gl_in[2].gl_Position;
+    geom_uv = vec2(0.0, 1.0);
     geom_color = color;
     EmitVertex();
 
