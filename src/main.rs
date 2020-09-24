@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use gl::types::*;
 
-use cgmath::{Matrix4, Point3, Vector3, Vector4, Deg, perspective};
+use cgmath::{Matrix4, Point3, Vector3, Deg, perspective};
 
 use sdl2::event::Event;
 use sdl2::video::SwapInterval;
@@ -326,7 +326,7 @@ pub fn main() {
 
         let proj_matrix: Matrix4<f32> =
             perspective(Deg(45.), 1.0, 0.01, 2000000.0);
-        let mut view_matrix: Matrix4<f32> =
+        let view_matrix: Matrix4<f32> =
             Matrix4::look_at(*origin, *origin + direction, Vector3::new(0., 1., 0.));
         let transform_matrix = proj_matrix * view_matrix;
 
@@ -377,7 +377,7 @@ pub fn main() {
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
                     update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, -move_speed);
                 },
-                Event::MouseWheel { x, y, .. } => {
+                Event::MouseWheel { y, .. } => {
                     if y > 0 {
                         move_speed *= 1.2;
                     } else {
@@ -387,7 +387,7 @@ pub fn main() {
                 Event::MouseMotion { xrel, yrel, .. } => {
                     let xdel = xrel as f32 / 400.;
                     let ydel = yrel as f32 / 400.;
-                    head_horiz_angle = (head_horiz_angle - xdel);
+                    head_horiz_angle = head_horiz_angle - xdel;
                     head_vert_angle  = (head_vert_angle  - ydel)
                         .min(std::f32::consts::PI / 2. - 0.01)
                         .max(-std::f32::consts::PI / 2. + 0.01);
