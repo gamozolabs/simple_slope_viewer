@@ -2,6 +2,7 @@ use std::io;
 use std::fs::File;
 use std::io::{Read, BufReader};
 use std::ffi::CString;
+use std::cell::Cell;
 use std::path::Path;
 use std::time::Instant;
 
@@ -10,7 +11,7 @@ use gl::types::*;
 use cgmath::{Matrix4, Point3, Vector3, Deg, perspective};
 
 use sdl2::mouse::MouseButton;
-use sdl2::event::Event;
+use sdl2::event::{Event, WindowEvent};
 use sdl2::video::SwapInterval;
 use sdl2::keyboard::Keycode;
 
@@ -217,10 +218,15 @@ pub fn main() {
     // Get access to the video subsystem
     let video_subsystem = sdl_context.video().unwrap();
 
+    // Width and height of the window
+    let win_width  = Cell::new(1440);
+    let win_height = Cell::new(900);
+
     // Create a window
     let window = video_subsystem
-        .window("rust-sdl2 demo", 800, 800)
+        .window("rust-sdl2 demo", win_width.get(), win_height.get())
         .position_centered()
+        .resizable()
         .opengl()
         .build()
         .unwrap();
@@ -326,7 +332,9 @@ pub fn main() {
         *origin += direction * movement;
 
         let proj_matrix: Matrix4<f32> =
-            perspective(Deg(45.), 1.0, 0.01, 2000000.0);
+            perspective(Deg(45.),
+                win_width.get() as f32 / win_height.get() as f32,
+                0.01, 2000000.0);
         let view_matrix: Matrix4<f32> =
             Matrix4::look_at(*origin, *origin + direction, Vector3::new(0., 1., 0.));
         let transform_matrix = proj_matrix * view_matrix;
@@ -345,26 +353,38 @@ pub fn main() {
     // Enables movement of the camera angle by the mouse
     let mut mouse_enabled = true;
 
+    // Tracks if the window has focus
+    let mut focused = true;
+
     // Start a timer
     let start = Instant::now();
     let mut last_status = start;
-    'running: for frame in 1u64.. {
-        unsafe {
-            gl::ClearColor(1.0, 1.0, 1.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            gl::DrawElements(gl::TRIANGLES, triangles.len() as i32 * 3,
-                gl::UNSIGNED_INT, core::ptr::null_mut());
+    let mut frames = 0;
+    'running: loop {
+        if focused {
+            unsafe {
+                gl::ClearColor(1.0, 1.0, 1.0, 1.0);
+                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+                gl::DrawElements(gl::TRIANGLES, triangles.len() as i32 * 3,
+                    gl::UNSIGNED_INT, core::ptr::null_mut());
+            }
         }
 
         // Swap the double buffered OpenGL
         window.gl_swap_window();
+        
+        // Update frames rendered
+        frames += 1;
 
         if last_status.elapsed().as_secs_f64() >= 1.0 {
-            let elapsed = start.elapsed().as_secs_f64();
+            let elapsed = last_status.elapsed().as_secs_f64();
             print!("FPS {:10.2} | triangles {:10} | verticies {:10}\n",
-                   frame as f64 / elapsed,
+                   frames as f64 / elapsed,
                    triangles.len(),
                    vertex_data.len());
+
+            // Reset frame counter
+            frames = 0;
             last_status = Instant::now();
         }
 
@@ -374,6 +394,25 @@ pub fn main() {
                 Event::Quit { .. } => {
                     break 'running;
                 },
+                Event::Window { win_event: WindowEvent::FocusGained, .. } => {
+                    focused = true;
+                }
+                Event::Window { win_event: WindowEvent::FocusLost, .. } => {
+                    focused = false;
+                }
+                Event::Window { win_event: WindowEvent::Resized(x, y), .. } => {
+                    win_width.set(x as u32);
+                    win_height.set(y as u32);
+
+                    // Update viewport
+                    unsafe {
+                        gl::Viewport(0, 0, win_width.get() as i32,
+                            win_height.get() as i32);
+                    }
+                    
+                    // Update transforms
+                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0.0);
+                }
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     sdl_context.mouse().set_relative_mouse_mode(false);
                     mouse_enabled = false;
@@ -410,5 +449,9 @@ pub fn main() {
                 _ => {}
             }
         }
+
+        // Cap at 300 fps
+        std::thread::sleep(
+            std::time::Duration::from_nanos(1_000_000_000 / 300));
     }
 }
