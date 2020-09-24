@@ -9,6 +9,7 @@ use gl::types::*;
 
 use cgmath::{Matrix4, Point3, Vector3, Deg, perspective};
 
+use sdl2::mouse::MouseButton;
 use sdl2::event::Event;
 use sdl2::video::SwapInterval;
 use sdl2::keyboard::Keycode;
@@ -341,6 +342,9 @@ pub fn main() {
     // Update initial transform state
     update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0.0);
 
+    // Enables movement of the camera angle by the mouse
+    let mut mouse_enabled = true;
+
     // Start a timer
     let start = Instant::now();
     let mut last_status = start;
@@ -367,9 +371,12 @@ pub fn main() {
         // Check for events
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit {..} |
+                Event::Quit { .. } => {
+                    break 'running;
+                },
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    break 'running
+                    sdl_context.mouse().set_relative_mouse_mode(false);
+                    mouse_enabled = false;
                 },
                 Event::KeyDown { keycode: Some(Keycode::W), .. } => {
                     update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, move_speed);
@@ -384,14 +391,21 @@ pub fn main() {
                         move_speed /= 1.2;
                     }
                 }
+                Event::MouseButtonDown { mouse_btn: MouseButton::Left, .. } => {
+                    sdl_context.mouse().set_relative_mouse_mode(true);
+                    mouse_enabled = true;
+                },
                 Event::MouseMotion { xrel, yrel, .. } => {
-                    let xdel = xrel as f32 / 400.;
-                    let ydel = yrel as f32 / 400.;
-                    head_horiz_angle = head_horiz_angle - xdel;
-                    head_vert_angle  = (head_vert_angle  - ydel)
-                        .min(std::f32::consts::PI / 2. - 0.01)
-                        .max(-std::f32::consts::PI / 2. + 0.01);
-                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0.0);
+                    if mouse_enabled {
+                        let xdel = xrel as f32 / 400.;
+                        let ydel = yrel as f32 / 400.;
+                        head_horiz_angle = head_horiz_angle - xdel;
+                        head_vert_angle  = (head_vert_angle  - ydel)
+                            .min(std::f32::consts::PI / 2. - 0.01)
+                            .max(-std::f32::consts::PI / 2. + 0.01);
+                        update_transforms(&mut head_pos,
+                            head_horiz_angle, head_vert_angle, 0.0);
+                    }
                 }
                 _ => {}
             }
