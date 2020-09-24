@@ -39,15 +39,15 @@ out vec4 out_color;
 
 void main() {
     // thickness of the edge, in fraction of triangle size
-    float EDGE_THICC = 0.04;
+    //float EDGE_THICC = 0.04;
 
     out_color = geom_color;
-    vec2 uv = geom_uv;
-    float edge_dist = min(uv.x, uv.y);
-    float dist_ac = dot(uv.x - vec2(1.0, 1.0), vec2(-sqrt(0.5), -sqrt(0.5)));
-    edge_dist = min(edge_dist, dist_ac);
-    // make a purple dot near the vertex
-    out_color.y -= step(edge_dist, EDGE_THICC);
+    //vec2 uv = geom_uv;
+    //float edge_dist = min(uv.x, uv.y);
+    //float dist_ac = dot(uv.x - vec2(1.0, 1.0), vec2(-sqrt(0.5), -sqrt(0.5)));
+    //edge_dist = min(edge_dist, dist_ac);
+    //// make a purple dot near the vertex
+    //out_color.y -= step(edge_dist, EDGE_THICC);
 }";
 
 // Geometry shader
@@ -74,11 +74,12 @@ vec3 GetNormal()
 void main() {
     vec3 normal = abs(GetNormal());
 
-    vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-    // make unwalkable slopes red
-    color.x = step(normal.y, 0.5) * 0.3;
-    // shade steeper slopes darker
-    color.xyz += vec3(normal.y);
+    vec4 color = vec4(0.9, 0.9, 0.9, 1.0);
+    // show unwalkable slopes
+    float MAX_SLOPE = 0.5;
+    vec4 slope_base_color = vec4(182., 167., 136., 1.0) / 182.;
+    color = mix(color, slope_base_color, step(normal.y, MAX_SLOPE));
+    color.xyz *= 0.5 + abs(normal.y) * 0.5;
 
     gl_Position = gl_in[0].gl_Position;
     geom_color = color;
