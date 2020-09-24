@@ -344,13 +344,21 @@ pub fn main() {
         gl::GetUniformLocation(program, transform_matrix_name.as_ptr())
     };
 
-    let update_transforms = |origin: &mut Point3<f32>, horiz_angle: f32, vert_angle: f32, movement: f32| {
+    let update_transforms = |origin: &mut Point3<f32>, horiz_angle: f32, vert_angle: f32, movement_front: f32, movement_strafe: f32| {
         let direction = Vector3::new(
             vert_angle.cos() * horiz_angle.sin(),
             vert_angle.sin(),
             vert_angle.cos() * horiz_angle.cos());
+        
+        let horiz_angle = horiz_angle + std::f32::consts::PI / 2.;
+        let vert_angle  = 0f32;
+        let direction_strafe = Vector3::new(
+            vert_angle.cos() * horiz_angle.sin(),
+            vert_angle.sin(),
+            vert_angle.cos() * horiz_angle.cos());
 
-        *origin += direction * movement;
+        *origin += direction * movement_front;
+        *origin += direction_strafe * movement_strafe;
 
         let proj_matrix: Matrix4<f32> =
             perspective(Deg(45.),
@@ -369,7 +377,7 @@ pub fn main() {
     };
     
     // Update initial transform state
-    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0.0);
+    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0., 0.);
 
     // Enables movement of the camera angle by the mouse
     let mut mouse_enabled = true;
@@ -432,17 +440,23 @@ pub fn main() {
                     }
                     
                     // Update transforms
-                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0.0);
+                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0., 0.);
                 }
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     sdl_context.mouse().set_relative_mouse_mode(false);
                     mouse_enabled = false;
                 },
                 Event::KeyDown { keycode: Some(Keycode::W), .. } => {
-                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, move_speed);
+                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, move_speed, 0.);
                 },
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
-                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, -move_speed);
+                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, -move_speed, 0.);
+                },
+                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0., move_speed);
+                },
+                Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+                    update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0., -move_speed);
                 },
                 Event::MouseWheel { y, .. } => {
                     if y > 0 {
@@ -464,7 +478,7 @@ pub fn main() {
                             .min(std::f32::consts::PI / 2. - 0.01)
                             .max(-std::f32::consts::PI / 2. + 0.01);
                         update_transforms(&mut head_pos,
-                            head_horiz_angle, head_vert_angle, 0.0);
+                            head_horiz_angle, head_vert_angle, 0., 0.);
                     }
                 }
                 _ => {}
