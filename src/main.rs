@@ -61,18 +61,23 @@ vec3 GetNormal()
 }
 
 void main() {
-    vec3 normal = GetNormal();
+    float MAX_SLOPE = 0.5;
+    vec3 normal = abs(GetNormal());
+
+    vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+    color.x = step(normal.y, MAX_SLOPE) * 0.3;
+    color.xyz += vec3(normal.y);
 
     gl_Position = gl_in[0].gl_Position;
-    geom_color = vec4(0.3 + normal.y / 2);
+    geom_color = color;
     EmitVertex();
 
     gl_Position = gl_in[1].gl_Position;
-    geom_color = vec4(0.3 + normal.y / 2);
+    geom_color = color;
     EmitVertex();
-    
+
     gl_Position = gl_in[2].gl_Position;
-    geom_color = vec4(0.3 + normal.y / 2);
+    geom_color = color;
     EmitVertex();
 
     EndPrimitive();
