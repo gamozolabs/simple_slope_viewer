@@ -11,24 +11,33 @@ use sdl2::event::Event;
 use sdl2::video::SwapInterval;
 use sdl2::keyboard::Keycode;
 
-use map_parser::ObjFile;
+use map_parser::{ObjFile, Vertex};
 
-// Shader sources
+// Vertex shader
 static VS_SRC: &'static str = "
 #version 150
-in vec3 position;
+in vec4 position;
 uniform mat4 transform_matrix;
+out float color_position;
 
 void main() {
-    gl_Position = transform_matrix * vec4(position, 1.0);
+    color_position = position.w;
+    gl_Position = transform_matrix * vec4(position.xyz, 1.0);
 }";
 
+// Fragment shader
 static FS_SRC: &'static str = "
 #version 150
 out vec4 out_color;
+in float color_position;
 
 void main() {
-    out_color = vec4(0.0, 0.0, 1.0, 1.0);
+    out_color = vec4(
+        0.2 + color_position / 3,
+        0.2 + color_position / 3,
+        0.2 + color_position / 3,
+        1.0
+    );
 }";
 
 fn compile_shader(src: &str, ty: GLenum) -> GLuint {
@@ -101,8 +110,12 @@ fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
 }
 
 pub fn main() {
-    if false {
     let mut obj = ObjFile::default();
+    
+    obj.load(
+        "/home/pleb/recastnavigation/build/RecastDemo/meshes_all/\
+         map0002930.obj").unwrap();
+    if false {
 obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005832.obj").unwrap();
 obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0004633.obj").unwrap();
 obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0006130.obj").unwrap();
@@ -618,8 +631,7 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0004139.obj
 obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0006132.obj").unwrap();
 obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0002437.obj").unwrap();
 obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj").unwrap();
-    return;
-}
+    }
 
     // Create an SDL context
     let sdl_context = sdl2::init().unwrap();
@@ -635,19 +647,16 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
         .build()
         .unwrap();
 
-    let mut vertex_data = Vec::new();
+    // Get the vertex data and indicies for the data in our object file
+    let (vertex_data, triangles) = obj.vbo_and_triangles();
 
-    for _ in 0..1000 {
-        vertex_data.push(-2f32);
-        vertex_data.push(0f32);
-        vertex_data.push(0f32);
-        vertex_data.push(0f32);
-        vertex_data.push(1f32);
-        vertex_data.push(0f32);
-        vertex_data.push(1f32);
-        vertex_data.push(0f32);
-        vertex_data.push(0f32);
-    }
+    /*
+    let vertex_data: &[Vertex] = &[
+        Vertex(-1., 0., 0.),
+        Vertex(0., 1., 0.),
+        Vertex(1., 0., 0.)
+    ];
+    let triangles: &[(u32, u32, u32)] = &[(0, 1, 2)];*/
 
     // Create the GL context
     let _gl = window.gl_create_context().unwrap();
@@ -681,7 +690,7 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
         gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
         gl::BufferData(
             gl::ARRAY_BUFFER,
-            (vertex_data.len() * std::mem::size_of::<GLfloat>()) as GLsizeiptr,
+            core::mem::size_of_val(&vertex_data[..]) as isize,
             vertex_data.as_ptr() as *const _,
             gl::STATIC_DRAW,
         );
@@ -698,19 +707,32 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
         gl::EnableVertexAttribArray(pos_attr as GLuint);
         gl::VertexAttribPointer(
             pos_attr as GLuint,
-            3,
+            4,
             gl::FLOAT,
             gl::FALSE as GLboolean,
             0,
             std::ptr::null(),
         );
+
+        let mut ele_buffer = 0;
+        gl::GenBuffers(1, &mut ele_buffer);
+        gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ele_buffer);
+        gl::BufferData(gl::ELEMENT_ARRAY_BUFFER,
+            core::mem::size_of_val(&triangles[..]) as isize,
+            triangles.as_ptr() as *const _, gl::STATIC_DRAW);
+
+        gl::Enable(gl::CULL_FACE);
+        gl::Enable(gl::DEPTH_TEST);
+        gl::DepthFunc(gl::LESS);
+        gl::FrontFace(gl::CW);
+        gl::CullFace(gl::BACK);
     }
 
     // Name of the camera uniform
     let transform_matrix_name = CString::new("transform_matrix").unwrap();
 
-    let mut origin: Point3<f32> = Point3::new(0., 0., -1.0);
-    let mut target: Point3<f32> = Point3::new(0., 0., 0.);
+    let mut origin: Point3<f32> = Point3::new(-20., -100., -1600.);
+    let mut target: Point3<f32> = Point3::new(10.81, -49.65, 1767.3413);
 
     fn view_frustum(field_of_view: f32, aspect_ratio: f32,
                     z_near: f32, z_far: f32) -> Matrix4<f32> {
@@ -729,7 +751,7 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
 
     let update_transforms = |origin: Point3<f32>, target: Point3<f32>| {
         let proj_matrix: Matrix4<f32> =
-            view_frustum(45f32.to_degrees(), 1.0, 0.01, 2.0);
+            view_frustum(45f32.to_degrees(), 1.0, 0.01, 20000.0);
         let mut view_matrix: Matrix4<f32> =
             Matrix4::look_at(origin, target, Vector3::new(0., -1., 0.));
         view_matrix[3] =
@@ -753,7 +775,8 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
         unsafe {
             gl::ClearColor(1.0, 1.0, 1.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            gl::DrawArrays(gl::TRIANGLES, 0, (vertex_data.len() / 3) as i32);
+            gl::DrawElements(gl::TRIANGLES, triangles.len() as i32 * 3,
+                gl::UNSIGNED_INT, core::ptr::null_mut());
         }
 
         // Swap the double buffered OpenGL
@@ -761,7 +784,10 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
 
         if frame & 0xff == 0 {
             let elapsed = start.elapsed().as_secs_f64();
-            print!("FPS {:10.2}\n", frame as f64 / elapsed);
+            print!("FPS {:10.2} | triangles {:10} | verticies {:10}\n",
+                   frame as f64 / elapsed,
+                   triangles.len(),
+                   vertex_data.len());
         }
 
         // Check for events
@@ -772,11 +798,27 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
                     break 'running
                 },
                 Event::KeyDown { keycode: Some(Keycode::W), .. } => {
-                    origin[2] += 0.05;
+                    origin[1] -= 10.;
                     update_transforms(origin, target);
                 },
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
-                    origin[2] -= 0.05;
+                    origin[1] += 10.;
+                    update_transforms(origin, target);
+                },
+                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                    origin[0] += 10.05;
+                    update_transforms(origin, target);
+                },
+                Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+                    origin[0] -= 10.05;
+                    update_transforms(origin, target);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Q), .. } => {
+                    origin[2] += 10.05;
+                    update_transforms(origin, target);
+                },
+                Event::KeyDown { keycode: Some(Keycode::E), .. } => {
+                    origin[2] -= 10.05;
                     update_transforms(origin, target);
                 },
                 _ => {}
