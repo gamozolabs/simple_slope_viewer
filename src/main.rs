@@ -233,6 +233,21 @@ pub fn load_falkvbo<P: AsRef<Path>>(path: P)
 }
 
 pub fn main() {
+    // Get the arguments
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() != 2 {
+        print!("Usage: {} <falkvbo file>\n", args[0]);
+        return;
+    }
+    
+    print!("Loading falkvbo data...\n");
+
+    // Get the vertex data and indicies for the data in our object file
+    let (vertex_data, triangles) =
+        load_falkvbo(&args[1]).expect("Failed to load falkvbo data");
+
+    print!("Falkvbo data loaded!\n");
+
     // Create an SDL context
     let sdl_context = sdl2::init().unwrap();
 
@@ -251,11 +266,6 @@ pub fn main() {
         .opengl()
         .build()
         .unwrap();
-
-    // Get the vertex data and indicies for the data in our object file
-    let (vertex_data, triangles) =
-        load_falkvbo("mapcombine/kalimdor.falkvbo")
-        .expect("Failed to load falkvbo data");
 
     // Create the GL context
     let _gl = window.gl_create_context().unwrap();
@@ -392,7 +402,7 @@ pub fn main() {
     'running: loop {
         if focused {
             unsafe {
-                gl::ClearColor(1.0, 1.0, 1.0, 1.0);
+                gl::ClearColor(0.0, 0.0, 0.0, 1.0);
                 gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
                 gl::DrawElements(gl::TRIANGLES, triangles.len() as i32 * 3,
                     gl::UNSIGNED_INT, core::ptr::null_mut());
