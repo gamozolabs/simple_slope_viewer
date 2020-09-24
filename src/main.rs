@@ -18,27 +18,58 @@ static VS_SRC: &'static str = "
 #version 150
 in vec4 position;
 uniform mat4 transform_matrix;
-out float color_position;
 
 void main() {
-    color_position = position.w;
     gl_Position = transform_matrix * vec4(position.xyz, 1.0);
 }";
 
 // Fragment shader
 static FS_SRC: &'static str = "
 #version 150
+
+in vec4 geom_color;
 out vec4 out_color;
-in float color_position;
 
 void main() {
-    out_color = vec4(
-        0.2 + color_position / 3,
-        0.2 + color_position / 3,
-        0.2 + color_position / 3,
-        1.0
-    );
-}";
+    out_color = geom_color;
+}
+";
+
+// Geometry shader
+static GS_SRC: &'static str = "
+#version 150
+
+layout (triangles) in;
+layout (triangle_strip, max_vertices = 3) out;
+
+out vec4 geom_color;
+
+vec3 GetNormal()
+{
+   vec3 a = vec3(gl_in[0].gl_Position) - vec3(gl_in[1].gl_Position);
+   vec3 b = vec3(gl_in[2].gl_Position) - vec3(gl_in[1].gl_Position);
+   return normalize(cross(a, b));
+}
+
+void main() {
+    vec3 normal = GetNormal();
+
+    gl_Position = gl_in[0].gl_Position;
+    geom_color = vec4(0.0, 0.0, normal.z, 1.0);
+    EmitVertex();
+
+    gl_Position = gl_in[1].gl_Position;
+    geom_color = vec4(0.0, 0.0, normal.z, 1.0);
+    EmitVertex();
+    
+    gl_Position = gl_in[2].gl_Position;
+    geom_color = vec4(0.0, 0.0, normal.z, 1.0);
+    EmitVertex();
+
+    EndPrimitive();
+}
+";
+
 
 fn compile_shader(src: &str, ty: GLenum) -> GLuint {
     let shader;
@@ -76,11 +107,12 @@ fn compile_shader(src: &str, ty: GLenum) -> GLuint {
     shader
 }
 
-fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
+fn link_program(vs: GLuint, fs: GLuint, gs: GLuint) -> GLuint {
     unsafe {
         let program = gl::CreateProgram();
         gl::AttachShader(program, vs);
         gl::AttachShader(program, fs);
+        gl::AttachShader(program, gs);
         gl::LinkProgram(program);
         // Get the link status
         let mut status = gl::FALSE as GLint;
@@ -112,9 +144,7 @@ fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
 pub fn main() {
     let mut obj = ObjFile::default();
     
-    obj.load(
-        "/home/pleb/recastnavigation/build/RecastDemo/meshes_all/\
-         map0002930.obj").unwrap();
+    obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0002930.obj").unwrap();
     if false {
 obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005832.obj").unwrap();
 obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0004633.obj").unwrap();
@@ -633,6 +663,8 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0002437.obj
 obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj").unwrap();
     }
 
+    print!("All data loaded\n");
+
     // Create an SDL context
     let sdl_context = sdl2::init().unwrap();
 
@@ -641,14 +673,14 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
 
     // Create a window
     let window = video_subsystem
-        .window("rust-sdl2 demo", 800, 800)
+        .window("rust-sdl2 demo", 1440, 900)
         .position_centered()
         .opengl()
         .build()
         .unwrap();
 
-    // Get the vertex data and indicies for the data in our object file
-    let (vertex_data, triangles) = obj.vbo_and_triangles();
+    // Get the vertex data
+    let vertex_data = obj.vbo();
 
     /*
     let vertex_data: &[Vertex] = &[
@@ -675,7 +707,8 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
     // Create GLSL shaders
     let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
     let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
-    let program = link_program(vs, fs);
+    let gs = compile_shader(GS_SRC, gl::GEOMETRY_SHADER);
+    let program = link_program(vs, fs, gs);
 
     let mut vao = 0;
     let mut vbo = 0;
@@ -688,6 +721,9 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
         // Create a Vertex Buffer Object and copy the vertex data to it
         gl::GenBuffers(1, &mut vbo);
         gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+
+        print!("Created buffer\n");
+
         gl::BufferData(
             gl::ARRAY_BUFFER,
             core::mem::size_of_val(&vertex_data[..]) as isize,
@@ -695,10 +731,13 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
             gl::STATIC_DRAW,
         );
 
+        print!("Buffer data complete\n");
+
         // Use shader program
         gl::UseProgram(program);
+        /*
         gl::BindFragDataLocation(program, 0,
-                                 CString::new("out_color").unwrap().as_ptr());
+                                 CString::new("out_color").unwrap().as_ptr());*/
 
         // Specify the layout of the vertex data
         let pos_attr = gl::GetAttribLocation(program,
@@ -713,13 +752,6 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
             0,
             std::ptr::null(),
         );
-
-        let mut ele_buffer = 0;
-        gl::GenBuffers(1, &mut ele_buffer);
-        gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ele_buffer);
-        gl::BufferData(gl::ELEMENT_ARRAY_BUFFER,
-            core::mem::size_of_val(&triangles[..]) as isize,
-            triangles.as_ptr() as *const _, gl::STATIC_DRAW);
 
         gl::Enable(gl::CULL_FACE);
         gl::Enable(gl::DEPTH_TEST);
@@ -775,8 +807,12 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
         unsafe {
             gl::ClearColor(1.0, 1.0, 1.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            
+            gl::DrawArrays(gl::TRIANGLES, 0, vertex_data.len() as i32 * 3);
+
+            /*
             gl::DrawElements(gl::TRIANGLES, triangles.len() as i32 * 3,
-                gl::UNSIGNED_INT, core::ptr::null_mut());
+                gl::UNSIGNED_INT, core::ptr::null_mut());*/
         }
 
         // Swap the double buffered OpenGL
@@ -784,9 +820,8 @@ obj.load("/home/pleb/recastnavigation/build/RecastDemo/meshes_all/map0005129.obj
 
         if frame & 0xff == 0 {
             let elapsed = start.elapsed().as_secs_f64();
-            print!("FPS {:10.2} | triangles {:10} | verticies {:10}\n",
+            print!("FPS {:10.2} | verticies {:10}\n",
                    frame as f64 / elapsed,
-                   triangles.len(),
                    vertex_data.len());
         }
 

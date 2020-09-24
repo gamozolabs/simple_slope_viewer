@@ -80,65 +80,35 @@ impl ObjFile {
         Ok(())
     }
 
-    /// Create a list of VBO data (vertex data) as well as indicies to describe
-    /// triangles
-    pub fn vbo_and_triangles(&self) -> (Vec<Vertex>, Vec<(u32, u32, u32)>) {
-        // List of verticies
-        let mut verticies = Vec::new();
-
-        // Lookup table from vertex to index
-        let mut vertex_index = BTreeMap::new();
-
-        // List of triangles by index
+    /// Create a list of VBO data (vertex data)
+    pub fn vbo(&self) -> Vec<(f32, f32, f32, f32)> {
+        // List of triangles
         let mut triangles = Vec::new();
 
         // Go through each triangle in our data
         for &(a, b, c) in &self.triangles {
-            for &x in &[a, b, c] {
-                // Save all unique verticies into the `verticies` list and
-                // maintain a lookup table from verticies to their indicies
-                if !vertex_index.contains_key(&x) {
-                    vertex_index.insert(x, verticies.len());
-                    verticies.push(x);
-                }
-            }
+            // Convert the verticies into vectors
+            let a = Vector3::new(a.0, a.1, a.2);
+            let b = Vector3::new(b.0, b.1, b.2);
+            let c = Vector3::new(c.0, c.1, c.2);
 
-            // Get the indicies into the verticies
-            let vertex_indicies: (u32, u32, u32) = (
-                vertex_index[&a].try_into().unwrap(),
-                vertex_index[&b].try_into().unwrap(),
-                vertex_index[&c].try_into().unwrap(),
-            );
+            // Compute vectors
+            let ab = b - a;
+            let bc = c - b;
 
-            {
-                // Convert the verticies into vectors
-                let a = Vector3::new(a.0, a.1, a.2);
-                let b = Vector3::new(b.0, b.1, b.2);
-                let c = Vector3::new(c.0, c.1, c.2);
+            // Compute the triangle normal
+            let normal = ab.cross(bc).normalize();
 
-                // Compute vectors
-                let ab = b - a;
-                let bc = c - b;
+            // Compute the dot product against our light source
+            let light_source = Vector3::new(0., 1., 0.);
+            let brightness = normal.dot(light_source).abs();
 
-                // Compute the triangle normal
-                let normal = ab.cross(bc).normalize();
-
-                // Compute the dot product against our light source
-                let light_source = Vector3::new(0., 1., 0.);
-                let brightness = normal.dot(light_source).abs();
-
-                // Update the verticies colors based on the brightness
-                verticies[vertex_indicies.0 as usize].3 = brightness;
-                verticies[vertex_indicies.1 as usize].3 = brightness;
-                verticies[vertex_indicies.2 as usize].3 = brightness;
-            }
-
-            // Save the triangle data based on index rather than actual vertex
-            // data
-            triangles.push(vertex_indicies);
+            triangles.push((a.x, a.y, a.z, brightness));
+            triangles.push((b.x, b.y, b.z, brightness));
+            triangles.push((c.x, c.y, c.z, brightness));
         }
 
-        (verticies, triangles)
+        triangles
     }
 }
 
