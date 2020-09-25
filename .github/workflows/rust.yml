@@ -14,7 +14,8 @@ jobs:
         cargo build --release
     - uses: actions/upload-artifact@v2
       with:
-        path: target/release/wowvis
+        name: linux-x64
+        path: target/release/
     
   test_MacOS:
     runs-on: macOS-latest
@@ -27,7 +28,8 @@ jobs:
         cargo build --release
     - uses: actions/upload-artifact@v2
       with:
-        path: target/release/wowvis
+        name: macosx-x64
+        path: target/release/
       
   test_Windows:
     runs-on: windows-latest
@@ -40,4 +42,5 @@ jobs:
         cargo build --release
     - uses: actions/upload-artifact@v2
       with:
-        path: target/release/wowvis.exe
+        name: windows-x64
+        path: target/release/
