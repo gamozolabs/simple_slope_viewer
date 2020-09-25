@@ -11,8 +11,11 @@ jobs:
       run: |
         cargo install cargo-vcpkg
         cargo vcpkg build
-        cargo build
-      
+        cargo build --release
+    - uses: actions/upload-artifact@v2
+      with:
+        path: target/release/wowvis
+    
   test_MacOS:
     runs-on: macOS-latest
     steps:
@@ -21,7 +24,10 @@ jobs:
       run: |
         cargo install cargo-vcpkg
         cargo vcpkg build
-        cargo build
+        cargo build --release
+    - uses: actions/upload-artifact@v2
+      with:
+        path: target/release/wowvis
       
   test_Windows:
     runs-on: windows-latest
@@ -31,4 +37,7 @@ jobs:
       run: |
         cargo install cargo-vcpkg
         cargo vcpkg build
-        cargo build
+        cargo build --release
+    - uses: actions/upload-artifact@v2
+      with:
+        path: target/release/wowvis.exe
