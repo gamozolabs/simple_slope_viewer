@@ -15,7 +15,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: linux-x64
-        path: target/release/
+        path: target/release/simple_slope_viewer
     
   test_MacOS:
     runs-on: macOS-latest
@@ -29,7 +29,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: macosx-x64
-        path: target/release/
+        path: target/release/simple_slope_viewer
       
   test_Windows:
     runs-on: windows-latest
@@ -43,4 +43,4 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: windows-x64
-        path: target/release/
+        path: target/release/simple_slope_viewer.exe
