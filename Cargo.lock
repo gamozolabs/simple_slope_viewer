@@ -250,7 +250,6 @@ checksum = "28d81feded049b9c14eceb4a4f6d596a98cebbd59abdba949c5552a015466d33"
 dependencies = [
  "cfg-if",
  "libc",
- "vcpkg",
  "version-compare",
 ]
 
@@ -262,12 +261,6 @@ dependencies = [
  "gl",
  "sdl2",
 ]
-
-[[package]]
-name = "vcpkg"
-version = "0.2.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6454029bf181f092ad1b853286f23e2c507d8e8194d01d92da4a55c274a5508c"
 
 [[package]]
 name = "version-compare"

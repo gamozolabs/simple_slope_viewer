@@ -39,16 +39,17 @@ in vec2 geom_uv;
 out vec4 out_color;
 
 void main() {
-    // thickness of the edge, in fraction of triangle size
-    //float EDGE_THICC = 0.04;
+    // thickness of the vertex, in fraction of triangle size
+    float VERTEX_THICC = 0.03;
 
     out_color = geom_color;
-    //vec2 uv = geom_uv;
-    //float edge_dist = min(uv.x, uv.y);
-    //float dist_ac = dot(uv.x - vec2(1.0, 1.0), vec2(-sqrt(0.5), -sqrt(0.5)));
-    //edge_dist = min(edge_dist, dist_ac);
-    //// make a purple dot near the vertex
-    //out_color.y -= step(edge_dist, EDGE_THICC);
+
+    /*
+    vec2 uv = geom_uv;
+    float vert_dist = length(uv);
+    vert_dist = min(vert_dist, length(uv - vec2(1.0, 0.0)));
+    vert_dist = min(vert_dist, length(uv - vec2(0.5, sqrt(3.0*0.25))));
+    out_color.y -= step(vert_dist, VERTEX_THICC);*/
 }";
 
 // Geometry shader
@@ -80,25 +81,20 @@ void main() {
     //  90 degrees = Straight vertical
     // 180 degrees = Flat surface, but upside-down, like looking at a ceiling
     float slope = degrees(acos(abs(normal.y)));
-        
+
     // This is a linear gradient from:
     //  0 degree slope, flat surface, color = 0.8, 0.8. 0.8
     // 60 degree slope, flat surface, color = 0.2, 0.2. 0.2
     vec4 color = vec4(0.1, 0.1, 0.1, 1.0) + (90 - slope) / 112.5;
 
+    // Emphasize red on slopes which are not walkable
     if(slope > 60) {
         color.x *= 2.5;
     }
 
-    // show unwalkable slopes
-    //float MAX_SLOPE = 0.5;
-    //vec4 slope_base_color = vec4(182., 167., 136., 1.0) / 182.;
-    //color = mix(color, slope_base_color, step(normal.y, MAX_SLOPE));
-    //color.xyz *= 0.5 + -normal.y * 0.5;
-
     gl_Position = gl_in[0].gl_Position;
     geom_color = color;
-    geom_uv = vec2(0.0, 0.0);
+    geom_uv = vec2(0.0, 1.0);
     EmitVertex();
 
     gl_Position = gl_in[1].gl_Position;
@@ -107,7 +103,7 @@ void main() {
     EmitVertex();
 
     gl_Position = gl_in[2].gl_Position;
-    geom_uv = vec2(0.0, 1.0);
+    geom_uv = vec2(0.5, sqrt(3.0 * 0.25));
     geom_color = color;
     EmitVertex();
 
@@ -360,7 +356,7 @@ pub fn main() {
 
     let mut head_pos: Point3<f32> = Point3::new(0., 1000., 0.);
     let mut head_horiz_angle: f32 = 0.;
-    let mut head_vert_angle:  f32 = 0.;
+    let mut head_vert_angle:  f32 = (-89f32).to_radians();
     let mut move_speed:       f32 = 10.;
 
     // Find the transform matrix location
