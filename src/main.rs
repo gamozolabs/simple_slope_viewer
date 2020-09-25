@@ -69,18 +69,32 @@ vec3 GetNormal()
 {
    vec3 a = vec3(gs_in[0].orig_position) - vec3(gs_in[1].orig_position);
    vec3 b = vec3(gs_in[2].orig_position) - vec3(gs_in[1].orig_position);
-   return abs(normalize(cross(a, b)));
+   return normalize(cross(a, b));
 }
 
 void main() {
-    vec3 normal = abs(GetNormal());
+    vec3 normal = GetNormal();
 
-    vec4 color = vec4(0.9, 0.9, 0.9, 1.0);
+    // Compute the slope of the triangle, in degrees.
+    //   0 degrees = Flat surface, eg, flat terrain
+    //  90 degrees = Straight vertical
+    // 180 degrees = Flat surface, but upside-down, like looking at a ceiling
+    float slope = degrees(acos(abs(normal.y)));
+        
+    // This is a linear gradient from:
+    //  0 degree slope, flat surface, color = 0.8, 0.8. 0.8
+    // 60 degree slope, flat surface, color = 0.2, 0.2. 0.2
+    vec4 color = vec4(0.1, 0.1, 0.1, 1.0) + (90 - slope) / 112.5;
+
+    if(slope > 60) {
+        color.x *= 2.5;
+    }
+
     // show unwalkable slopes
-    float MAX_SLOPE = 0.5;
-    vec4 slope_base_color = vec4(182., 167., 136., 1.0) / 182.;
-    color = mix(color, slope_base_color, step(normal.y, MAX_SLOPE));
-    color.xyz *= 0.5 + abs(normal.y) * 0.5;
+    //float MAX_SLOPE = 0.5;
+    //vec4 slope_base_color = vec4(182., 167., 136., 1.0) / 182.;
+    //color = mix(color, slope_base_color, step(normal.y, MAX_SLOPE));
+    //color.xyz *= 0.5 + -normal.y * 0.5;
 
     gl_Position = gl_in[0].gl_Position;
     geom_color = color;
@@ -344,7 +358,7 @@ pub fn main() {
     // Name of the camera uniform
     let transform_matrix_name = CString::new("transform_matrix").unwrap();
 
-    let mut head_pos: Point3<f32> = Point3::new(0., 0., 5.);
+    let mut head_pos: Point3<f32> = Point3::new(0., 1000., 0.);
     let mut head_horiz_angle: f32 = 0.;
     let mut head_vert_angle:  f32 = 0.;
     let mut move_speed:       f32 = 10.;
