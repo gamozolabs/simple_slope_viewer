@@ -402,6 +402,9 @@ pub fn main() {
     // Enables movement of the camera angle by the mouse
     let mut mouse_enabled = true;
 
+    // If set, render the next frame
+    let mut frame_changed = true;
+
     // Tracks if the window has focus
     let mut focused = true;
 
@@ -410,13 +413,16 @@ pub fn main() {
     let mut last_status = start;
     let mut frames = 0;
     'running: loop {
-        if focused {
+        if focused && frame_changed {
             unsafe {
                 gl::ClearColor(0.0, 0.0, 0.0, 1.0);
                 gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
                 gl::DrawElements(gl::TRIANGLES, triangles.len() as i32 * 3,
                     gl::UNSIGNED_INT, core::ptr::null_mut());
             }
+
+            // Set that the frame has not changed
+            frame_changed = false;
         }
 
         // Swap the double buffered OpenGL
@@ -461,6 +467,7 @@ pub fn main() {
                     
                     // Update transforms
                     update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0., 0.);
+                    frame_changed = true;
                 }
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     sdl_context.mouse().set_relative_mouse_mode(false);
@@ -468,15 +475,19 @@ pub fn main() {
                 },
                 Event::KeyDown { keycode: Some(Keycode::W), .. } => {
                     update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, move_speed, 0.);
+                    frame_changed = true;
                 },
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
                     update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, -move_speed, 0.);
+                    frame_changed = true;
                 },
                 Event::KeyDown { keycode: Some(Keycode::A), .. } => {
                     update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0., move_speed);
+                    frame_changed = true;
                 },
                 Event::KeyDown { keycode: Some(Keycode::D), .. } => {
                     update_transforms(&mut head_pos, head_horiz_angle, head_vert_angle, 0., -move_speed);
+                    frame_changed = true;
                 },
                 Event::MouseWheel { y, .. } => {
                     if y > 0 {
@@ -499,6 +510,7 @@ pub fn main() {
                             .max(-std::f32::consts::PI / 2. + 0.01);
                         update_transforms(&mut head_pos,
                             head_horiz_angle, head_vert_angle, 0., 0.);
+                        frame_changed = true;
                     }
                 }
                 _ => {}
