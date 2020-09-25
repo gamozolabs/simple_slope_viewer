@@ -89,7 +89,25 @@ void main() {
 
     // Emphasize red on slopes which are not walkable
     if(slope > 60) {
-        color.x *= 2.5;
+        //color.x *= 2.5;
+    }
+    
+    // climbable!
+    // if(slope >= 44.5 && slope <= 45) {
+    //if(slope >= 45.5 && slope <= 46) {
+    //if(slope >= 46.5 && slope <= 47) {
+    //if(slope >= 47.5 && slope <= 48) {
+    //if(slope >= 48.5 && slope <= 49) {
+    //if(slope >= 49.5 && slope <= 50) {
+    //if(slope >= 50. && slope <= 50.001) {
+    
+    // failing to climb
+    //if(slope >= 50.101 && slope <= 50.2) {
+    //if(slope >= 50.05 && slope <= 50.1) {
+    //if(slope >= 50.001 && slope <= 50.01) {
+    
+    if(slope >= 50.) {
+        color.z *= 2.5;
     }
 
     gl_Position = gl_in[0].gl_Position;
