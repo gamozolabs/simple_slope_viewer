@@ -13,7 +13,7 @@ cgmath = "0.17.0"
 [dependencies.sdl2]
 version = "0.34"
 default-features = false
-#features = ["static-link", "use-vcpkg"]
+features = ["static-link", "use-vcpkg"]
 
 [package.metadata.vcpkg]
 dependencies = ["sdl2"]
