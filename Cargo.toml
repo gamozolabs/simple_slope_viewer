@@ -9,11 +9,12 @@ edition = "2018"
 [dependencies]
 gl = "0.14.0"
 cgmath = "0.17.0"
+parse_ealogpos = { path = "parse_ealogpos" }
 
 [dependencies.sdl2]
 version = "0.34"
 default-features = false
-features = ["static-link", "use-vcpkg"]
+#features = ["static-link", "use-vcpkg"]
 
 [package.metadata.vcpkg]
 dependencies = ["sdl2"]
