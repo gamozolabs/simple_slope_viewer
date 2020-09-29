@@ -107,16 +107,30 @@ void main() {
     //   0 degrees = Flat surface, eg, flat terrain
     //  90 degrees = Straight vertical
     // 180 degrees = Flat surface, but upside-down, like looking at a ceiling
-    float slope = degrees(acos(max(min(1.0, abs(normal.y)), 0.0)));
+    float slope = degrees(acos(max(-1.0, min(1.0, -normal.y))));
 
     // Color is 0.1 0.1 0.1 for steepest slope
     // Color is 0.9 0.9 0.9 for flattest slope
-    vec4 color = vec4(0.1, 0.1, 0.1, 1.0) + (90 - slope) / 112.5;
+    vec4 color;
     
-    // Color unclimbable slopes a bit more blue
-    if(slope >= 50.) {
-        color.z *= 2.5;
+    if(slope <= 50.) {
+        // Climbable triangle
+        // flat plane = 0.9, 0.9, 0.9
+        // 50 degree  = 0.1, 0.1, 0.1
+        color = vec4(0.1, 0.1, 0.1, 1.0) + (50 - slope) / 62.5;
+    } else if(slope <= 90.) {
+        // Unclimbable triangle
+        //  50 degree = 0.9, 0.9, 0.9
+        // 180 degree = 0.1, 0.1, 0.1
+        color = vec4(0.0, 0.0, 0.3, 1.0) + (40 - (slope - 50)) / 50;
+    } else {
+        // Inverted triangle
+        //  90 degree = 0.9, 0.9, 0.9
+        // 180 degree = 0.1, 0.1, 0.1
+        color = vec4(0.3, 0.0, 0.0, 1.0) + (90 - (slope - 90)) / 112.5;
     }
+
+    //color *= 1 + (abs(normal.z) / 10.0);
 
     gl_Position = gl_in[0].gl_Position;
     geom_color = color;
@@ -334,18 +348,18 @@ pub fn main() {
                 print!("{} stationary boat angle\n",
                        (180. - (poss[0].angle - 82.691023903837)) - jump_angle);
             
-                head_pos.x = poss[0].y as f32;
-                head_pos.z = poss[0].x as f32;
-
-                path_data.push((poss[0].y as f32, 100.,
-                                poss[0].x as f32, 0.5));
-                path_data.push((poss[0].y as f32, 100.,
-                                poss[0].x as f32 - 1000., 0.5));
+                if true {
+                    head_pos.x = land_target_y as f32;
+                    head_pos.z = land_target_x as f32;
+                } else {
+                    head_pos.x = poss[0].y as f32;
+                    head_pos.z = poss[0].x as f32;
+                }
                 
                 path_data.push((poss[0].y as f32, 100.,
-                                poss[0].x as f32, 0.5));
+                                poss[0].x as f32, 1.0));
                 path_data.push((land_target_y as f32, 100.,
-                                land_target_x as f32, 0.5));
+                                land_target_x as f32, 1.0));
             }
 
             path_data.push((poss[0].y as f32, 100.,
@@ -372,7 +386,7 @@ pub fn main() {
             path_data.push((poss[0].y as f32, 100., poss[0].x as f32, 0.1));
             path_data.push((poss[1].y as f32, 100., poss[1].x as f32, 0.1));
         });
-    let positions = Positions::from_lua("jumpatt.lua")
+    let positions = Positions::from_lua("jumpatt_success2.lua")
         .expect("Failed to load LUA path");
     positions.positions.windows(2)
         .filter(|poss| {
@@ -384,8 +398,8 @@ pub fn main() {
                 delta < 10.
         })
         .for_each(|poss| {
-            path_data.push((poss[0].y as f32, 100., poss[0].x as f32, 0.3));
-            path_data.push((poss[1].y as f32, 100., poss[1].x as f32, 0.3));
+            path_data.push((poss[0].y as f32, 100., poss[0].x as f32, 0.5));
+            path_data.push((poss[1].y as f32, 100., poss[1].x as f32, 0.5));
         });
     
     print!("Loading falkvbo data...\n");
